@@ -1,62 +1,32 @@
-import wave
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
+import scipy.signal as signal
+import scipy.fftpack as fftpack
+import wave
 
-# Charger le fichier audio
-audio_file = 'audio.wav'
-with wave.open(audio_file, 'r') as wave_file:
-    # Obtenir les paramètres audio
-    nchannels, sampwidth, framerate, nframes, comptype, compname = wave_file.getparams()
-    # Lire les données audio
-    audio_data = wave_file.readframes(nframes)
-    # Convertir les données audio en tableau numpy
-    audio_data = np.frombuffer(audio_data, dtype=np.int16)
+# Ouvrir le fichier audio
+audio_file = wave.open("out.wav", "r")
 
-# Normaliser les données audio
-audio_data = audio_data / np.max(np.abs(audio_data))
+# Extraire les échantillons audio
+signal_frames = audio_file.readframes(-1)
+signal_frames = np.frombuffer(signal_frames, dtype=np.int16)
 
-# Extraire la fréquence fondamentale
-f0 = np.zeros_like(audio_data)
-for i in range(len(audio_data)):
-    # Calculer l'autocorrélation
-    corr = np.correlate(audio_data[i:i+framerate], audio_data[i:i+framerate], mode='full')
-    # Trouver le premier pic après le décalage de la fréquence d'échantillonnage
-    peaks, _ = find_peaks(corr[framerate:], height=0)
-    if len(peaks) > 0:
-        f0[i] = framerate / peaks[0]
+# Obtenir la fréquence d'échantillonnage
+sampling_freq = audio_file.getframerate()
 
-# Extraire les formants
-formants = np.zeros((len(audio_data), 4))
-for i in range(len(audio_data)):
-    # Calculer le spectrogramme
-    f, t, Sxx = plt.specgram(audio_data[i:i+framerate], Fs=framerate)
-    # Trouver les quatre premiers formants
-    peaks, _ = find_peaks(np.mean(Sxx, axis=1), height=0)
-    if len(peaks) >= 4:
-        formants[i] = f[peaks[:4]]
+# Appliquer une fenêtre de Hamming au signal
+signal_frames = signal_frames * np.hamming(len(signal_frames))
 
-# Extraire l'énergie spectrale
-spectral_flux = np.zeros_like(audio_data)
-for i in range(len(audio_data)):
-    if i == 0:
-        spectral_flux[i] = 0
-    else:
-        # Calculer la différence spectrale entre les trames successives
-        diff = np.abs(np.fft.rfft(audio_data[i:i+framerate])) - np.abs(np.fft.rfft(audio_data[i-1:i-1+framerate]))
-        spectral_flux[i] = np.sum(np.maximum(diff, 0))
+# Calculer la Transformée de Fourier Rapide (FFT)
+fft = fftpack.fft(signal_frames)
 
-# Extraire la durée
-duration = len(audio_data) / framerate
+# Extraire les fréquences et les amplitudes
+freqs = fftpack.fftfreq(len(signal_frames)) * sampling_freq
+power_spectrum = np.abs(fft)
 
-# Extraire l'intensité
-intensity = np.zeros_like(audio_data)
-for i in range(len(audio_data)):
-    intensity[i] = 20 * np.log10(np.abs(audio_data[i]))
+# Rechercher l'indice de la fréquence maximale dans la plage de fréquences de la voix
+min_freq = 43
+max_freq = 10000
+freq_idx = np.where((freqs >= min_freq) & (freqs <= max_freq))
+fundamental_freq = freqs[freq_idx][np.argmax(power_spectrum[freq_idx])]
 
-# Imprimer les résultats
-print('Fréquence fondamentale :', f0)
-print('Formants :', formants)
-print('Énergie spectrale :', spectral_flux)
-print('Durée :', duration)
-print('Intensité :', intensity)
+print("La fréquence fondamentale est : {:.2f} Hz".format(fundamental_freq))

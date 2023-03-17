@@ -12,7 +12,7 @@ signal_frames = np.frombuffer(signal_frames, dtype=np.int16)
 sampling_freq = audio_file.getframerate()
 
 # Calculer le facteur d'échelle
-rate = 2  # facteur d'échelle
+rate = 0.1  # facteur d'échelle
 new_len = int(len(signal_frames) / rate)
 
 # Appliquer une interpolation linéaire pour modifier la longueur temporelle
