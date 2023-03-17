@@ -7,7 +7,7 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 44100
 RECORD_SECONDS = 5
-WAVE_OUTPUT_FILENAME = "output.wav"
+WAVE_OUTPUT_FILENAME = "out.wav"
 
 # Initialiser l'objet PyAudio
 audio = pyaudio.PyAudio()
